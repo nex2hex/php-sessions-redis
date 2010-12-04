@@ -1,0 +1,9 @@
+Complete usage example:   
+
+<?php
+require 'php-redis/sessions.php';
+redis_sessions::$db = 1;
+redis_sessions::install();
+?>
+    
+Key prefix obtained from cookie name.
