@@ -1,43 +1,44 @@
 <?php
 
-require "redis.php";
+require dirname(__FILE__)."/redis.php";
 
 class redis_sessions
 {
-	private static $redis = NULL;
-	private static $session_name = NULL;
-	public static $db = 0;
-	public static $host = "127.0.0.1";
-	public static $port = 6379;
+	private $redis = NULL;
+	private $session_name = NULL;
+	public $db = 0;
+	public $lifetime = NULL;
+	public $host = "127.0.0.1";
+	public $port = 6379;
 	
-	private function __construct()
+	public function __construct()
 	{
 	}
 	
-	public static function open($save_path, $session_name)
+	public function open($save_path, $session_name)
 	{
-		self::$session_name = $session_name;
+		$this->session_name = $session_name;
 		
-		if (self::$redis === NULL)
+		if ($this->redis === NULL)
 		{
-			self::$redis = new php_redis(self::$host, self::$port);
-			if (self::$db != 0)
+			$this->redis = new php_redis($this->host, $this->port);
+			if ($this->db != 0)
 			{
-				self::$redis->select(self::$db);
+				$this->redis->select($this->db);
 			}
 		}
 	}
 
-	public static function close()
+	public function close()
 	{
-		self::$redis = NULL;
+		$this->redis = NULL;
 	}
 	
-	public static function read($id)
+	public function read($id)
 	{
-		$key = self::$session_name.":".$id;
+		$key = $this->session_name.":".$id;
 		
-		$sess_data = self::$redis->get($key);
+		$sess_data = $this->redis->get($key);
 		if ($sess_data === NULL)
 		{
 			return "";
@@ -45,29 +46,37 @@ class redis_sessions
 		return $sess_data;
 	}
 	
-	public static function write($id, $sess_data)
+	public function write($id, $sess_data)
 	{
-		$key = self::$session_name.":".$id;
-		$lifetime = ini_get("session.gc_maxlifetime");
+		$key = $this->session_name.":".$id;
+		$lifetime = $this->lifetime;
+		if ($lifetime === NULL) {
+			$lifetime = ini_get("session.gc_maxlifetime");
+		}
 		
-		self::$redis->set_expire($key, $lifetime, $sess_data);
+		$this->redis->set_expire($key, $lifetime, $sess_data);
 	}
 	
-	public static function destroy($id)
+	public function destroy($id)
 	{
-		$key = self::$session_name.":".$id;
+		$key = $this->session_name.":".$id;
 		
-		self::$redis->delete($key);
+		$this->redis->delete($key);
 	}
 	
-	public static function gc($maxlifetime)
+	public function gc($maxlifetime)
 	{
 	}
 
-	public static function install()
+	public function install()
 	{
-		session_set_save_handler("redis_sessions::open", "redis_sessions::close"
-			, "redis_sessions::read", "redis_sessions::write"
-			, "redis_sessions::destroy", "redis_sessions::gc");
+		session_set_save_handler(
+			array($this, "open"),
+			array($this, "close"),
+			array($this, "read"),
+			array($this, "write"),
+			array($this, "destroy"),
+			array($this, "gc")
+		);
 	}
 }
