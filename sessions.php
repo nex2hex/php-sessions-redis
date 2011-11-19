@@ -1,7 +1,5 @@
 <?php
 
-require dirname(__FILE__)."/redis.php";
-
 class redis_sessions
 {
 	private $redis = NULL;
